@@ -21,8 +21,8 @@ def main():
     #ev3 = EV3Brick()
     #ev3.speaker.beep()
     
-    balls_list = camera_control.detect()
-    motor_control.control(balls_list)
+    ''' balls_list = camera_control.detect()
+    // motor_control.control(balls_list) '''
 if __name__ == "__main__":
     main()
  
