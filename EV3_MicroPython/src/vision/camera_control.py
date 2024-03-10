@@ -36,11 +36,18 @@ class DetectedCircles:
         self.x=x
         self.y = y
         self.radius = radius
+class DetectedRobot:
+    def __init__(self, x, y, w, h):
+        self.x = x
+        self.y = y
+        self.width = w
+        self.height = h        
         
     
     
-def detect(cap):
+def detect(cap, robot_template):
  balls_list = [] # List to store the deteced balls 
+ robot_position = None 
  while True:
     # Capturing frames
     ret, frame = cap.read()
@@ -55,22 +62,12 @@ def detect(cap):
     # Convert to grayscale for thresholding and circle detection
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (9,9),0) 
-    _, thresholded = cv2.threshold(blurred, 220, 255, cv2.THRESH_BINARY)
+    edges = cv2.Canny(blurred, 50, 150)
+    #_, thresholded = cv2.threshold(blurred, 220, 255, cv2.THRESH_BINARY)
 
     # Detect circles using Hough Circles white Balls 
-    circles = cv2.HoughCircles(thresholded, cv2.HOUGH_GRADIENT, dp=1.2, minDist=50,
-                                param1=50, param2=30, minRadius=0, maxRadius=0)
-                                
-    #Detect orange Balls                             
-    #hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    #lower_orange = np.array([5, 50, 50])
-    #upper_orange = np.array([15, 255, 255])
-    #mask = cv2.inRange(hsv, lower_orange, upper_orange)
-    #circles = cv2.HoughCircles(mask, cv2.HOUGH_GRADIENT, dp=1.2, minDist=50,
-    #                          param1=50, param2=30, minRadius=0, maxRadius=0)
-    
-    
-    
+    circles = cv2.HoughCircles(edges, cv2.HOUGH_GRADIENT, dp=1.2, minDist=50,
+                                param1=50, param2=30, minRadius=30, maxRadius=50)
     # Draw circles on the original frame - UI for detection 
     if circles is not None:
         circles = np.uint16(np.around(circles))
@@ -79,29 +76,58 @@ def detect(cap):
             cv2.circle(frame,(i[0], i[1]), i[2], (0, 255, 0), 2)
             # Draw the center of the circle
             cv2.circle(frame, (i[0], i[1]), 2, (0, 0, 255), 3)
-            circle_details = DetectedCircles(i[0], i[1], i[2])
-            balls_list.append(circle_details)
+            circle_text = f"({i[0]}, {i[1]}), Radius: {i[2]}"
+            text_position = (i[0] - i[2], i[1] + i[2] + 10)
+            cv2.putText(frame, circle_text, text_position, cv2.FONT_HERSHEY_SIMPLEX, 
+                0.5, (0, 0, 255), 1, cv2.LINE_AA)
+            balls_list.append(DetectedCircles(i[0], i[1], i[2]))
+    
+    #Robot detection using the template matching- maybe we have to use another method in the future 
+    for scale in np.linspace(0.5, 1.5, 20):  # Example: scales from 0.5x to 1.5x original size
+            resized_template = cv2.resize(robot_template, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray_template = cv2.cvtColor(resized_template, cv2.COLOR_BGR2GRAY)
+            res = cv2.matchTemplate(gray_frame, gray_template, cv2.TM_CCOEFF_NORMED)
+            threshold = 0.8
+            loc = np.where(res >= threshold)
+            if loc[0].size > 0:  # If there are matches at this scale
+                pt = loc[1][0], loc[0][0]  # Take the first match
+                cv2.rectangle(frame, pt, (pt[0] + resized_template.shape[1], pt[1] + resized_template.shape[0]), (255, 0, 0), 2)
+                robot_position = DetectedRobot(pt[0], pt[1], resized_template.shape[1], resized_template.shape[0])
+                break  # Stop searching once we've found a match
+                
             
             
             
     # Display and Detect
-    cv2.imshow('Frame with Detected Objects - Ball-obstacles-', frame)
+    cv2.imshow('Frame with Detected Objects-', frame)
     # Break the loop with the 'q' key
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
    
     # When everything done, release the capture and destroy all windows
     #cap.release()
-    #cv2.destroyAllWindows()
-    return balls_list
-    
+    #cv2.destroyAllWindows() 
+
+ return balls_list, robot_position  
  
  
 
 def main():
     """ Main function to control the camera and detect objects (balls-obstacles and the field)""" 
     cap = open_camera()
-    if cap is not None:
-        detect(cap)
+    robot_template = cv2.imread('C:\\Users\\fathi\\Documents\\GitHub\\62410-CDIO-Project\\EV3_MicroPython\\data\\images\\prototype.png') 
+    if cap is not None and robot_template is not None:
+        balls,robot = detect(cap, robot_template)
+    print(f"Detected {len(balls)} balls.")
+    for index,ball in enumerate(balls):
+     print(f"Ball {index} at ({ball.x}, {ball.y}) with radius {ball.radius}.")
+    if robot:
+     print(f"Detected robot at ({robot.x}, {robot.y}).")
+    else:
+        print("No robot detected.")
+ 
+   
+        
 if __name__ == "__main__":
  main()

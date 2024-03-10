@@ -10,7 +10,10 @@ from pybricks.media.ev3dev import SoundFile, ImageFile
 
 
 
+
+
 def control(balls_list):
+    
         # Initialize the EV3 Brick.
     ev3 = EV3Brick()
 
