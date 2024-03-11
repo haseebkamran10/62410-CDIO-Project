@@ -44,8 +44,8 @@ class DetectedRobot:
         self.height = h        
         
     
-    
-def detect(cap, robot_template):
+#def detect(cap,robot_template):
+def detect(cap):
  balls_list = [] # List to store the deteced balls 
  robot_position = None 
  while True:
@@ -79,11 +79,43 @@ def detect(cap, robot_template):
             circle_text = f"({i[0]}, {i[1]}), Radius: {i[2]}"
             text_position = (i[0] - i[2], i[1] + i[2] + 10)
             cv2.putText(frame, circle_text, text_position, cv2.FONT_HERSHEY_SIMPLEX, 
-                0.5, (0, 0, 255), 1, cv2.LINE_AA)
+                0.5, (255, 255, 255), 1, cv2.LINE_AA)
             balls_list.append(DetectedCircles(i[0], i[1], i[2]))
+            
+    #Field detection 
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 
+    lower_red = np.array([0, 120, 70])
+    upper_red = np.array([10, 255, 255])
+    mask1 = cv2.inRange(hsv, lower_red, upper_red)
+
+    lower_red = np.array([170, 120, 70])
+    upper_red = np.array([180, 255, 255])
+    mask2 = cv2.inRange(hsv, lower_red, upper_red)
+    mask = cv2.bitwise_or(mask1, mask2)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    rectangle_contour = []
+    for contour in contours:
+    # Approximate the contour to reduce the number of points
+     epsilon = 0.05 * cv2.arcLength(contour, True)
+     approx = cv2.approxPolyDP(contour, epsilon, True)
+      # Check if the contour has 4 vertices and a significant area to be considered a rectangle
+     if len(approx) == 4 and cv2.contourArea(contour) > 1000:  # You can adjust the area threshold as necessary
+        rectangle_contour.append(contour)
+    
+    # Find the largest contour for better detection Test 
+    '''largest_contour = max(contours, key=cv2.contourArea)'''
+    # Assuming the field is the largest rectangle, find the max area rectangle
+    if rectangle_contour:
+     largest_rectangle = max(rectangle_contour, key=cv2.contourArea)
+     # Draw contours on the original image
+     cv2.drawContours(frame, [largest_rectangle], -1, (255, 255, 255), 3)
+    else: 
+     print("No field found")
+    '''cv2.putText(frame, "field", text_position, cv2.FONT_HERSHEY_SIMPLEX, 
+                0.5, (0, 0, 255), 1, cv2.LINE_AA)'''
     
     #Robot detection using the template matching- maybe we have to use another method in the future 
-    for scale in np.linspace(0.5, 1.5, 20):  # Example: scales from 0.5x to 1.5x original size
+    '''for scale in np.linspace(0.5, 1.5, 20):  # Example: scales from 0.5x to 1.5x original size
             resized_template = cv2.resize(robot_template, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
             gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             gray_template = cv2.cvtColor(resized_template, cv2.COLOR_BGR2GRAY)
@@ -94,7 +126,7 @@ def detect(cap, robot_template):
                 pt = loc[1][0], loc[0][0]  # Take the first match
                 cv2.rectangle(frame, pt, (pt[0] + resized_template.shape[1], pt[1] + resized_template.shape[0]), (255, 0, 0), 2)
                 robot_position = DetectedRobot(pt[0], pt[1], resized_template.shape[1], resized_template.shape[0])
-                break  # Stop searching once we've found a match
+                break  # Stop searching once we've found a match'''
                 
             
             
@@ -109,23 +141,25 @@ def detect(cap, robot_template):
     #cap.release()
     #cv2.destroyAllWindows() 
 
- return balls_list, robot_position  
+ return balls_list, robot_position , rectangle_contour  
  
  
 
 def main():
-    """ Main function to control the camera and detect objects (balls-obstacles and the field)""" 
+    #Main function to control the camera and detect objects (balls-obstacles and the field)
     cap = open_camera()
-    robot_template = cv2.imread('C:\\Users\\fathi\\Documents\\GitHub\\62410-CDIO-Project\\EV3_MicroPython\\data\\images\\prototype.png') 
-    if cap is not None and robot_template is not None:
-        balls,robot = detect(cap, robot_template)
+    '''robot_template = cv2.imread('C:\\Users\\fathi\\Documents\\GitHub\\62410-CDIO-Project\\EV3_MicroPython\\data\\images\\prototype.png') 
+    #if cap is not None and robot_template is not None:
+        balls,robot = detect(cap, robot_template) '''
+    if cap is not None:
+        balls = detect(cap)
     print(f"Detected {len(balls)} balls.")
     for index,ball in enumerate(balls):
      print(f"Ball {index} at ({ball.x}, {ball.y}) with radius {ball.radius}.")
-    if robot:
+    '''if robot:
      print(f"Detected robot at ({robot.x}, {robot.y}).")
-    else:
-        print("No robot detected.")
+     else:
+        print("No robot detected.")'''
  
    
         

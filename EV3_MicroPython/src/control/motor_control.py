@@ -8,10 +8,6 @@ InfraredSensor, UltrasonicSensor, GyroSensor)
 from pybricks.parameters import Port, Stop, Direction, Button, Color
 from pybricks.media.ev3dev import SoundFile, ImageFile
 
-
-
-
-
 def control(balls_list):
     
         # Initialize the EV3 Brick.
