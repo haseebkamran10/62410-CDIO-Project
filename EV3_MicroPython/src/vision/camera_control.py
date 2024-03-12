@@ -36,18 +36,24 @@ class DetectedCircles:
         self.x=x
         self.y = y
         self.radius = radius
-class DetectedRobot:
+'''class DetectedRobot:
     def __init__(self, x, y, w, h):
         self.x = x
         self.y = y
         self.width = w
-        self.height = h        
+        self.height = h'''    
+class DetectedRobot:
+    def __init__(self, vertices):
+        self.vertices = vertices  # A list of three points [(x1, y1), (x2, y2), (x3, y3)] cause it is a triangle
+            
         
     
 #def detect(cap,robot_template):
 def detect(cap):
  balls_list = [] # List to store the deteced balls 
- robot_position = None 
+ robots_list = []
+ fields_list = []
+ #robot_position = None 
  while True:
     # Capturing frames
     ret, frame = cap.read()
@@ -109,10 +115,48 @@ def detect(cap):
      largest_rectangle = max(rectangle_contour, key=cv2.contourArea)
      # Draw contours on the original image
      cv2.drawContours(frame, [largest_rectangle], -1, (255, 255, 255), 3)
+     fields_list.append((i[0], i[1], i[2]))
     else: 
      print("No field found")
     '''cv2.putText(frame, "field", text_position, cv2.FONT_HERSHEY_SIMPLEX, 
                 0.5, (0, 0, 255), 1, cv2.LINE_AA)'''
+                
+    #Robot detection using color and a triangle
+    '''gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Apply GaussianBlur to reduce noise and improve edge detection
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+
+    # Canny edge detection
+    edges = cv2.Canny(blurred, 50, 150)'''
+    lower_green = np.array([50, 100, 100])
+    upper_green = np.array([70, 255, 255])
+    maskRobot = cv2.inRange(hsv, lower_green, upper_green)
+    maskRobot = cv2.morphologyEx(maskRobot, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+
+
+    contours, _ = cv2.findContours(maskRobot, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    largest_triangle_area = 0
+    largest_triangle_approx = None
+    # Loop over the contours
+    for cnt in contours:
+        # Approximate the contour to a polygon
+        epsilon = 0.03 * cv2.arcLength(cnt, True)
+        approx = cv2.approxPolyDP(cnt, epsilon, True)
+
+        # If the polygon has 3 vertices, it is a triangle
+        if len(approx) == 3:
+            area = cv2.contourArea(cnt)
+            if area > largest_triangle_area:
+             largest_triangle_area = area
+             largest_triangle_approx = approx
+            if largest_triangle_approx is not None:
+            # Draw the contour of the triangle
+             cv2.drawContours(frame, [largest_triangle_approx], -1, (0, 255, 0), 3)
+             cv2.putText(frame, "Robot", (largest_triangle_approx[0][0][0], largest_triangle_approx[0][0][1]), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+             robots_list.append(DetectedRobot(largest_triangle_approx))
+    
+    
     
     #Robot detection using the template matching- maybe we have to use another method in the future 
     '''for scale in np.linspace(0.5, 1.5, 20):  # Example: scales from 0.5x to 1.5x original size
@@ -141,7 +185,7 @@ def detect(cap):
     #cap.release()
     #cv2.destroyAllWindows() 
 
- return balls_list, robot_position , rectangle_contour  
+ return balls_list, robots_list, fields_list
  
  
 
