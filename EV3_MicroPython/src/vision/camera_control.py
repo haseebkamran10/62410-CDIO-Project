@@ -33,7 +33,7 @@ cv2.destroyAllWindows()
 '''
 class DetectedCircles:
     def __init__(self,x,y, radius):
-        self.x=x
+        self.x= x
         self.y = y
         self.radius = radius
 '''class DetectedRobot:
@@ -61,10 +61,10 @@ def detect(cap):
         break
     
     #dimensions
-    width = int(cap.get(3))
+    '''width = int(cap.get(3))
     height = int(cap.get(4))
     image = np.zeros(frame.shape, np.uint8)
-    smaller_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+    smaller_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)'''
     # Convert to grayscale for thresholding and circle detection
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (9,9),0) 
@@ -115,26 +115,17 @@ def detect(cap):
      largest_rectangle = max(rectangle_contour, key=cv2.contourArea)
      # Draw contours on the original image
      cv2.drawContours(frame, [largest_rectangle], -1, (255, 255, 255), 3)
-     fields_list.append((i[0], i[1], i[2]))
+     #fields_list.append((i[0], i[1], i[2]))
     else: 
      print("No field found")
     '''cv2.putText(frame, "field", text_position, cv2.FONT_HERSHEY_SIMPLEX, 
                 0.5, (0, 0, 255), 1, cv2.LINE_AA)'''
                 
     #Robot detection using color and a triangle
-    '''gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # Apply GaussianBlur to reduce noise and improve edge detection
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-
-    # Canny edge detection
-    edges = cv2.Canny(blurred, 50, 150)'''
     lower_green = np.array([50, 100, 100])
-    upper_green = np.array([70, 255, 255])
+    upper_green = np.array([120, 200, 181])
     maskRobot = cv2.inRange(hsv, lower_green, upper_green)
     maskRobot = cv2.morphologyEx(maskRobot, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
-
-
     contours, _ = cv2.findContours(maskRobot, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     largest_triangle_area = 0
     largest_triangle_approx = None
@@ -143,7 +134,6 @@ def detect(cap):
         # Approximate the contour to a polygon
         epsilon = 0.03 * cv2.arcLength(cnt, True)
         approx = cv2.approxPolyDP(cnt, epsilon, True)
-
         # If the polygon has 3 vertices, it is a triangle
         if len(approx) == 3:
             area = cv2.contourArea(cnt)
@@ -155,32 +145,12 @@ def detect(cap):
              cv2.drawContours(frame, [largest_triangle_approx], -1, (0, 255, 0), 3)
              cv2.putText(frame, "Robot", (largest_triangle_approx[0][0][0], largest_triangle_approx[0][0][1]), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
              robots_list.append(DetectedRobot(largest_triangle_approx))
-    
-    
-    
-    #Robot detection using the template matching- maybe we have to use another method in the future 
-    '''for scale in np.linspace(0.5, 1.5, 20):  # Example: scales from 0.5x to 1.5x original size
-            resized_template = cv2.resize(robot_template, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
-            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            gray_template = cv2.cvtColor(resized_template, cv2.COLOR_BGR2GRAY)
-            res = cv2.matchTemplate(gray_frame, gray_template, cv2.TM_CCOEFF_NORMED)
-            threshold = 0.8
-            loc = np.where(res >= threshold)
-            if loc[0].size > 0:  # If there are matches at this scale
-                pt = loc[1][0], loc[0][0]  # Take the first match
-                cv2.rectangle(frame, pt, (pt[0] + resized_template.shape[1], pt[1] + resized_template.shape[0]), (255, 0, 0), 2)
-                robot_position = DetectedRobot(pt[0], pt[1], resized_template.shape[1], resized_template.shape[0])
-                break  # Stop searching once we've found a match'''
-                
-            
-            
-            
+             
     # Display and Detect
     cv2.imshow('Frame with Detected Objects-', frame)
     # Break the loop with the 'q' key
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
-   
     # When everything done, release the capture and destroy all windows
     #cap.release()
     #cv2.destroyAllWindows() 
@@ -199,7 +169,11 @@ def main():
         balls = detect(cap)
     print(f"Detected {len(balls)} balls.")
     for index,ball in enumerate(balls):
-     print(f"Ball {index} at ({ball.x}, {ball.y}) with radius {ball.radius}.")
+     if isinstance(ball, DetectedCircles):
+      print(f"Ball {index} at ({ball.x}, {ball.y}) with radius {ball.radius}.")
+     else:
+        # This is a safeguard and should theoretically never be reached if your code is correct
+        print(f"Item at index {index} is not a DetectedCircles instance.")
     '''if robot:
      print(f"Detected robot at ({robot.x}, {robot.y}).")
      else:
