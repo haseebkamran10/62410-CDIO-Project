@@ -10,27 +10,6 @@ def open_camera(camera_index=0):
         print(f"No camera found at index {camera_index}- please reconnect your USB-camera")
         return None
     return cap
-        
-        
-# if you have other cameras 
-# Attempt to open the first few indices. This can be deleted it just checks if there are multiple cameras and choose the active one 
-'''
- for index in range(0, 4):
-    cap = cv2.VideoCapture(index)
-    if not cap.isOpened():
-        print(f"No camera found at index {index}")
-        cap.release()
-        continue
-    else:
-        ret, frame = cap.read()
-        if ret:
-            cv2.imshow(f"Test Frame from Camera Index {index}", frame)
-            cv2.waitKey(1000)  # Display each frame for 1000 milliseconds
-            print(f"Camera found at index {index}")
-        cap.release()
-
-cv2.destroyAllWindows() 
-'''
 class DetectedCircles:
     def __init__(self,x,y, radius):
         self.x= x
@@ -68,12 +47,23 @@ def detect(cap):
     # Convert to grayscale for thresholding and circle detection
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (9,9),0) 
-    edges = cv2.Canny(blurred, 50, 150)
+    sharpened = cv2.addWeighted(gray, 1.5, blurred, -0.5, 0)
+    edges = cv2.Canny(sharpened, 50, 150)
     #_, thresholded = cv2.threshold(blurred, 220, 255, cv2.THRESH_BINARY)
 
-    # Detect circles using Hough Circles white Balls 
-    circles = cv2.HoughCircles(edges, cv2.HOUGH_GRADIENT, dp=1.2, minDist=50,
-                                param1=50, param2=30, minRadius=30, maxRadius=50)
+    # Detect circles using Hough Circles 
+    '''circles = cv2.HoughCircles(edges, cv2.HOUGH_GRADIENT, dp=1.2, minDist=50,
+                                param1=50, param2=30, minRadius=40, maxRadius=50)'''
+    
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    lower_orange = np.array([5, 50, 50])
+    upper_orange = np.array([15, 255, 255])
+    mask = cv2.inRange(hsv, lower_orange, upper_orange)
+    kernel = np.ones((5, 5), np.uint8)
+    mask_cleaned = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    edges = cv2.Canny(mask_cleaned , 50, 150)
+    circles = cv2.HoughCircles(edges, cv2.HOUGH_GRADIENT, dp=1.2, minDist=20,
+                               param1=50, param2=30, minRadius=10, maxRadius=50)
     # Draw circles on the original frame - UI for detection 
     if circles is not None:
         circles = np.uint16(np.around(circles))
@@ -87,6 +77,7 @@ def detect(cap):
             cv2.putText(frame, circle_text, text_position, cv2.FONT_HERSHEY_SIMPLEX, 
                 0.5, (255, 255, 255), 1, cv2.LINE_AA)
             balls_list.append(DetectedCircles(i[0], i[1], i[2]))
+                
             
     #Field detection 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 
@@ -107,9 +98,6 @@ def detect(cap):
       # Check if the contour has 4 vertices and a significant area to be considered a rectangle
      if len(approx) == 4 and cv2.contourArea(contour) > 1000:  # You can adjust the area threshold as necessary
         rectangle_contour.append(contour)
-    
-    # Find the largest contour for better detection Test 
-    '''largest_contour = max(contours, key=cv2.contourArea)'''
     # Assuming the field is the largest rectangle, find the max area rectangle
     if rectangle_contour:
      largest_rectangle = max(rectangle_contour, key=cv2.contourArea)
@@ -118,9 +106,7 @@ def detect(cap):
      #fields_list.append((i[0], i[1], i[2]))
     else: 
      print("No field found")
-    '''cv2.putText(frame, "field", text_position, cv2.FONT_HERSHEY_SIMPLEX, 
-                0.5, (0, 0, 255), 1, cv2.LINE_AA)'''
-                
+     
     #Robot detection using color and a triangle
     lower_green = np.array([50, 100, 100])
     upper_green = np.array([120, 200, 181])
@@ -154,32 +140,16 @@ def detect(cap):
     # When everything done, release the capture and destroy all windows
     #cap.release()
     #cv2.destroyAllWindows() 
-
- return balls_list, robots_list, fields_list
+ return balls_list   
  
- 
-
 def main():
     #Main function to control the camera and detect objects (balls-obstacles and the field)
     cap = open_camera()
-    '''robot_template = cv2.imread('C:\\Users\\fathi\\Documents\\GitHub\\62410-CDIO-Project\\EV3_MicroPython\\data\\images\\prototype.png') 
-    #if cap is not None and robot_template is not None:
-        balls,robot = detect(cap, robot_template) '''
     if cap is not None:
         balls = detect(cap)
     print(f"Detected {len(balls)} balls.")
     for index,ball in enumerate(balls):
-     if isinstance(ball, DetectedCircles):
       print(f"Ball {index} at ({ball.x}, {ball.y}) with radius {ball.radius}.")
-     else:
-        # This is a safeguard and should theoretically never be reached if your code is correct
-        print(f"Item at index {index} is not a DetectedCircles instance.")
-    '''if robot:
-     print(f"Detected robot at ({robot.x}, {robot.y}).")
-     else:
-        print("No robot detected.")'''
  
-   
-        
 if __name__ == "__main__":
  main()
